@@ -1,0 +1,339 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+## Log Entry - 2025-04-30 12:50:00
+
+**Review:** Initial Project Setup
+
+**Job Card:** 001
+
+**Suggestion/Action:**
+*   Objective: Construct a live visual ghost display of the task manager's "cpu performance" window.
+*   Key Requirements: Always visible (layered between desktop background and active windows), top 10% of display, transparent, live updates.
+*   Proposed Stack: Python, psutil, PyQt6/PySide6, pywin32.
+*   Initial Plan: Setup -> Data Acquisition -> Basic Window -> Styling/Transparency -> Positioning/Sizing -> Visualization -> Window Layering -> Integration.
+*   Initiating project structure and logging.
+
+## Log Entry - 2025-04-30 12:51:00
+
+**Review:** Project File Creation
+
+**Job Card:** 002
+
+**Suggestion/Action:**
+*   Corrected date/time format in previous log entry (Job Card 001).
+*   Created `cpu_overlay.py`.
+*   Implemented basic PyQt6 window structure.
+*   Added `psutil` for CPU percentage monitoring (updates every second).
+*   Configured window for top 10% screen height, borderless, semi-transparent.
+*   Included initial `pywin32` code in `showEvent` and `set_window_layer` to make the window click-through (`WS_EX_TRANSPARENT`) and attempt non-topmost layering (`HWND_NOTOPMOST`).
+*   Added placeholder label for CPU percentage display.
+*   Marked TODOs for graph visualization and advanced desktop layering.
+
+## Log Entry - 2025-04-30 12:55:00
+
+**Review:** Graph Visualization Implementation
+
+**Job Card:** 003
+
+**Suggestion/Action:**
+*   Acknowledged potential issues with running the overlay GUI within a container (Display access, `pywin32` layering, CPU metrics accuracy, screen dimensions).
+*   Added `collections.deque` to store the last 60 CPU percentage readings.
+*   Modified `update_cpu_usage` to append the latest reading to the deque.
+*   Implemented `paintEvent` method:
+    *   Draws a semi-transparent background.
+    *   Draws a simple green line graph based on the `cpu_history` deque.
+    *   Calculates coordinates to scale the graph (0-100%) to the widget dimensions.
+    *   Draws the current CPU percentage text in the top-right corner.
+*   Commented out the previous `QLabel` used for text display.
+*   Noted that advanced `pywin32` layering (`set_window_layer` TODOs) is unlikely to function correctly within a container.
+
+## Log Entry - 2025-04-30 13:00:00
+
+**Review:** Startup Configuration and Cyberpunk Theme
+
+**Job Card:** 004
+
+**Suggestion/Action:**
+*   Provided instructions for setting up the script to run on Windows startup using a batch file shortcut in the `shell:startup` folder.
+*   Modified `cpu_overlay.py` for a "cyberpunk" theme:
+    *   Changed background to darker, less transparent purple/blue (`rgba(10, 10, 25, 200)`).
+    *   Added a faint grid overlay in `paintEvent`.
+    *   Changed CPU graph line color to neon cyan and increased thickness.
+    *   Adjusted text color to light lavender, increased size, made bold, and repositioned (bottom-right example).
+*   Imported `QBrush` (though not explicitly used in this revision, added for potential future fill effects).
+
+## Log Entry - 2025-04-30 13:05:00
+
+**Review:** Cascading Purple Visualization
+
+**Job Card:** 005
+
+**Suggestion/Action:**
+*   Modified `paintEvent` in `cpu_overlay.py` to replace the single line graph with a cascading effect.
+*   Implemented a loop drawing multiple (`num_cascade_lines`) historical CPU traces.
+*   Each trace is drawn with decreasing opacity (`alpha`) and slightly adjusted color/thickness for older data points, creating a fading trail.
+*   Shifted color palette to purples:
+    *   Used `QColor.fromHsl` with a base purple hue for cascade lines.
+    *   Adjusted grid color to a faint purple.
+    *   Changed text color to light lavender.
+*   Refined history indexing logic within the drawing loop to handle deque states correctly.
+*   Imported `QLinearGradient` (currently unused, but potentially useful for smoother color transitions later).
+
+## Log Entry - 2025-04-30 13:10:00
+
+**Review:** "Mountain Track" Visualization (Filled Area)
+
+**Job Card:** 006
+
+**Suggestion/Action:**
+*   Replaced the cascading line effect with a filled area visualization in `paintEvent`.
+*   Constructed a single `QPainterPath` that encloses the area under the CPU history graph line, extending down to the bottom edge of the widget.
+*   Defined a `QLinearGradient` with purple shades (brighter/opaque top to darker/transparent bottom).
+*   Used `painter.fillPath()` to fill the constructed path with the gradient, creating a solid "mountain" shape.
+*   Added code to draw the top edge line ("ridge") separately with a distinct pen after filling for better definition.
+*   Removed the previous multi-line cascade loop.
+
+## Log Entry - 2025-04-30 13:15:00
+
+**Review:** Particle System Visualization (Matrix/Arcane/Cyberpunk Blend)
+
+**Job Card:** 007
+
+**Suggestion/Action:**
+*   Replaced graph/mountain visualization with a particle system in `paintEvent`.
+*   Added a `Particle` class to manage individual particle state (position, speed, color, size).
+*   Initialized particle system in `__init__` with a list of particles and defined colors (purple, cyan, green, pink).
+*   Separated timers: CPU update @ 1Hz, particle animation @ ~33Hz.
+*   Implemented `update_particles`: moves particles down, resets off-screen particles, adds new particles based on CPU load probability.
+*   Modified `paintEvent` to draw particles as ellipses with optional faint trails. Kept faint grid.
+*   Removed previous graph/fill/cascade drawing code.
+*   Adjusted text display (integer %, centered bottom).
+*   Ensured HWND is retrieved before attempting layer setting in `showEvent`.
+
+## Log Entry - 2025-04-30 13:20:00
+
+**Review:** Mission Accomplished
+
+**Job Card:** 008
+
+**Suggestion/Action:**
+*   User confirmed satisfaction with the particle-based visualization (Job Card 007).
+*   The current implementation features a dynamic particle effect in the top screen bar, influenced by CPU load, blending Matrix/Arcane/Cyberpunk themes.
+*   Functionality includes:
+    *   Particle system with configurable colors and density.
+    *   CPU monitoring driving particle generation rate/speed.
+    *   Configured for borderless, transparent, click-through overlay.
+    *   Includes method for startup via batch file/shortcut.
+    *   Advanced layering via `pywin32` attempted (with container caveats noted).
+*   Project objective considered complete.
+
+## Log Entry - 2025-04-30 13:25:00
+
+**Review:** Startup Batch File Creation
+
+**Job Card:** 009
+
+**Suggestion/Action:**
+*   Created `run_cpu_overlay.bat` in the project directory.
+*   Batch file contains commands (`@echo off`, `start "" python cpu_overlay.py`, `exit`) to silently launch the Python script.
+*   User needs to manually create a shortcut to this `.bat` file and place the shortcut in the Windows Startup folder (`shell:startup`) to enable auto-start on login.
+
+## 2024-07-28
+*   **cpu_overlay.py**: Modified particle generation logic in `update_particles`.
+    *   Implemented inverse relationship between CPU usage and particle count.
+    *   No new particles generated if CPU > 85%.
+    *   Maximum particle generation rate if CPU < 20%.
+    *   Gradual decrease in particle generation between 20% and 85% CPU.
+    *   Removed CPU-based particle speed scaling.
+*   **Date:** 2024-07-28
+    *   **Change:** Increased display size and droplet effects:
+        - Doubled the overlay height from 10% to 20% of screen height
+        - Doubled the number of splash particles from 6 to 12 per droplet
+        - Increased maximum splash radius from 15 to 20 pixels
+        - Creates a more immersive and visually striking effect
+    *   **Files:** `cpu_overlay.py`
+    
+*   **Date:** 2024-07-28
+    *   **Change:** Extended water droplet animation to cover the entire display width instead of only the center 1/3:
+        - Removed center region check in particle collision detection
+        - Updated documentation to reflect the full-width animation
+        - Created a more immersive visual experience with droplet effects across the entire CPU line
+    *   **Files:** `cpu_overlay.py`, `projectdescription.mdc`
+
+*   **Date:** 2024-07-28
+    *   **Change:** Added water trail effects behind droplet particles:
+        - Created new `WaterTrail` class for rendering thin, fading trails
+        - Trails persist for 10 seconds with gradual fading
+        - Applied 10% additional transparency to trails
+        - Modified splash particles to track position changes and generate trails
+        - Implemented trail thinning as they age for a more natural look
+    *   **Files:** `cpu_overlay.py`
+
+*   **Date:** 2024-07-28
+    *   **Change:** Implemented continuous trails behind falling particles:
+        - Modified `Particle` class to track previous positions
+        - Added trail generation during particle movement (before impact)
+        - Created a trail every 3 frames to maintain performance
+        - Set trails to be slightly more transparent than the particles
+        - Combined with existing splash trails for a complete visual effect
+    *   **Files:** `cpu_overlay.py`
+
+*   **Date:** 2024-07-28
+    *   **Change:** Enhanced splash animation and improved trail visibility:
+        - Modified splash animation to have droplets streak in different angles (360° pattern)
+        - Used trigonometric functions to create more realistic splash dispersion
+        - Increased visibility duration of all trails from 10 to 20 seconds
+        *   Added math library for angle calculations
+    *   **Files:** `cpu_overlay.py`
+
+*   **Date:** 2024-07-28
+    *   **Change:** Optimized code and reduced trail visibility:
+        - Reduced trail visibility duration from 20 seconds to 5 seconds
+        - Removed unused center region variables and calculations
+        - Eliminated debugging code for center region indicators
+        - Streamlined code for better performance
+    *   **Files:** `cpu_overlay.py`
+
+*   **Date:** 2024-07-28
+    *   **Change:** Differentiated trail durations based on type:
+        - Set splash animation trails to last 5 seconds
+        - Kept falling particle "snail trails" at 20 seconds
+        - Added `is_splash` flag to `WaterTrail` class to distinguish between trail types
+        - Removed unused code and optimized trail handling
+    *   **Files:** `cpu_overlay.py`
+
+*   **Date:** 2024-07-28
+    *   **Change:** Enhanced splash effect transparency and reduced duration:
+        - Reduced splash trail display time from 5 seconds to 1 second
+        - Increased splash effect transparency by 40%
+        - Added different transparency factors for splash vs. snail trails
+        - Maintained snail trail duration at 20 seconds
+    *   **Files:** `cpu_overlay.py`
+
+## 2025-04-30
+
+*   **Date:** 2025-05-01
+    *   **Change:** Increased overall transparency by 30%:
+        - Reduced all alpha values by 30% throughout the application
+        - Updated background transparency from 210 to 147
+        - Applied 30% reduction to all particle, trail, droplet, grid, and text alpha values
+        - Created a more subtle, ghostly effect while maintaining visibility
+    *   **Files:** `cpu_overlay.py`
+
+*   **Date:** 2024-07-29
+    *   **Change:** Transformed CPU display into Matrix-style visualization:
+        - Replaced water droplet particles with falling Matrix symbols (ASCII, numbers, Japanese katakana)
+        - Changed color scheme to Matrix-style greens
+        - Added symbol changing effect as they fall
+        - Replaced water splash effects with code dispersion effects
+        - Created SymbolTrail and CodeEffect classes to replace WaterTrail and WaterDroplet
+        - Updated ProjectDescription.mdc to reflect Matrix theme
+        - Made lead symbols brighter for enhanced visual depth
+        - Adjusted animation timing for more authentic Matrix feel (slightly stuttery at 20fps)
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-07-30
+    *   **Change:** Refined Matrix-style visualization based on user feedback:
+        - Decreased font size by 20% for more authentic code appearance
+        - Doubled maximum symbol count from 300 to 600 for denser digital rain
+        - Removed glow/splash animation at impact points while keeping symbol dispersion effect
+        - Adjusted font sizes throughout the application (including percentage display)
+        - Updated ProjectDescription.mdc to reflect these refinements
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-07-31
+    *   **Change:** Enhanced immersion with expanded Matrix display:
+        - Increased display height from 20% to 60% of screen (300% increase)
+        - Doubled maximum symbol count again from 600 to 1200 symbols
+        - Removed CPU usage line visibility while maintaining collision detection
+        - Created more mysterious effect with symbols reacting to an invisible force
+        - Updated ProjectDescription.mdc to reflect the more immersive experience
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-08-01
+    *   **Change:** Added visual enhancements and dynamic color cycling:
+        - Removed background grid for cleaner, more minimalist appearance
+        - Increased trail length by 3x (from 0.8 to 2.4 seconds) for more ghostly effects
+        - Increased trail transparency by additional 20% for more ethereal look
+        - Implemented color cycling system that rotates through five themes every 10 seconds:
+          * Green (classic Matrix)
+          * Blue
+          * Purple
+          * Black/Gray
+          * LSD (multi-color psychedelic)
+        - Added gradual color transition effect by randomly updating 30% of active symbols
+        - Updated percentage display to match current color theme
+        - Updated ProjectDescription.mdc to reflect these visual enhancements
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-08-02
+    *   **Change:** Transformed effects from CPU-based to random explosions:
+        - Removed CPU line collision detection entirely
+        - Implemented random explosion system with 5% chance per symbol
+        - Increased explosion radius by 500% (from 15 to 75 pixels) for spectacular effect
+        - Increased number of symbols per explosion from 16 to 20 
+        - Doubled explosion symbol speeds (from 10-25 to 20-50) for more energetic animations
+        - Created unpredictable, chaotic visual experience with explosions happening anywhere
+        - Completely removed the concept of CPU line for greater visual freedom
+        - Updated ProjectDescription.mdc to describe the new chaotic explosion system
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-08-02
+    *   **Change:** Fine-tuned explosion frequency:
+        - Reduced random explosion chance from 5% to 1% per symbol for a more balanced visual effect
+        - Creates rarer but still impactful explosion moments
+        - Updated ProjectDescription.mdc to reflect the adjusted probability
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-08-03
+    *   **Change:** Implemented advanced physics-based explosion system:
+        - Created variable-sized explosions (0.5x to 2.5x base size) for more visual variety
+        - Developed comprehensive explosion physics with particle-symbol interactions
+        - Added collision detection between explosion particles and regular symbols
+        - Implemented physics-based trajectory changes when symbols are hit by particles
+        - Added color influence from explosion particles to affected symbols
+        - Increased explosion animation duration by 50% (from 0.8 to 1.2 seconds)
+        - Added gradual drift damping for natural-looking motion decay
+        - Implemented complete particle system with improved physics calculations
+        - Created wave-like chain reactions when multiple symbols are affected
+        - Updated ProjectDescription.mdc with new "Interactive Explosion Physics" section
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-08-04
+    *   **Change:** Fine-tuned visual dynamics for a more meditative experience:
+        - Reduced all movement speeds by 50% for a more contemplative, gentle flow
+        - Decreased symbol explosion probability from 1% to 0.1% for rarer, more special events
+        - Doubled explosion animation duration from 1.2 to 2.4 seconds to compensate for slower speeds
+        - Adjusted particle speeds from 20-50 range to 10-25 range
+        - Reduced symbol falling speed from 1-5 range to 0.5-2.5 range
+        - Created a more dream-like, meditative visual experience
+        - Updated ProjectDescription.mdc to reflect the more contemplative aesthetics
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+*   **Date:** 2024-08-05
+    *   **Change:** Implemented final customizations based on user preferences:
+        - Made explosions extremely rare by reducing probability from 0.1% to 0.001%
+        - Decreased number of symbols by 50% (from 1200 to 600) for a cleaner, less dense display
+        - Increased falling speed by 100% to create a faster, more energetic Matrix rain effect
+        - Restored original symbol speed range (1-5) and added multiplier to movement calculation
+        - Created balance between fast-flowing symbols and extremely rare explosion events
+        - Ensured explosions feel like truly special, extraordinary events when they occur
+        - Updated ProjectDescription.mdc to reflect these final visual adjustments
+    *   **Files:** `MatrixCPUdisplay.py`, `ProjectDescription.mdc`
+
+[2024-09-28] MatrixCPUdisplay.py renamed to MatrixDisplay.py
+- Removed all CPU usage related code
+- Increased trail durations by 100%:
+  - Base SymbolTrail duration increased from 1.0 to 2.0
+  - CodeEffect duration increased from 2.4 to 4.8
+  - Particle trail duration increased from 0.6 to 1.2
+  - Symbol trail duration increased from 4.8 to 9.6
+[2025-05-01 03:40:20] Matrix Display Update:
+- Doubled all font sizes
+- Added CPU usage monitoring
+- Pause rain effect when CPU > 75%
+- Resume rain effect when CPU < 25%
+- Blood red explosions with double font size

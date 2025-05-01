@@ -1,0 +1,40 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Objective: Construct a live visual Matrix-style display of CPU performance that monitors system activity.
+*   Key Requirements: Always visible (layered between desktop background and active windows), top 60% of display, transparent, live updates.
+*   Proposed Stack: Python, psutil, PyQt6/PySide6, pywin32.
+*   Initial Plan: Setup -> Data Acquisition -> Basic Window -> Styling/Transparency -> Positioning/Sizing -> Visualization -> Window Layering -> Integration.
+*   Immersive Matrix-style display with high-density raining characters occupying a significant portion of the screen.
+*   Symbol rain depends on CPU usage. The higher the usage, the fewer symbols rain down. At >85% CPU - NO SYMBOLS are displayed. At <35% CPU - Maximum amount of symbols rain down without causing frame rate issues. Adjust symbol count gradually for CPU usage between 35-85%.
+*   Random digital explosions occur throughout the display as symbols spontaneously burst into spectacular dispersion patterns, with physics-based interactions affecting nearby symbols.
+*   Features color cycling every 10 seconds between five distinct themes: Green (classic Matrix), Blue, Purple, Black, and psychedelic LSD (multi-color).
+
+## Features:
+
+### Matrix Digital Rain
+*   Digital symbols (including ASCII, numbers, and Japanese katakana) rain down from the top of the screen.
+*   More focused display with 600 simultaneous symbols for a clean, streamlined visual experience.
+*   Compact symbol size for a more authentic Matrix code appearance.
+*   Extended symbol trails last three times longer with increased transparency for a more ghostly, ethereal effect.
+*   Clean, minimalist background with no grid or distracting elements.
+*   Symbols occasionally change during their descent, creating an authentic Matrix code appearance.
+*   Fast-flowing rain effect with rapid descent speeds for a dramatic, energetic visual.
+*   Lead symbols may appear brighter, enhancing the visual depth.
+*   Display covers a substantial 60% of the screen height for an immersive experience.
+*   Dynamic color cycling every 10 seconds through five themes: Green, Blue, Purple, Black, and multi-color LSD.
+
+### Interactive Explosion Physics
+*   Extremely rare digital explosions occur as extraordinary events with just a 0.001% chance per symbol.
+*   These extraordinary events create profound visual impact when they occur, precisely because of their rarity.
+*   Explosions vary in size from small localized bursts to massive screen-filling events (0.5x to 2.5x base size).
+*   Each explosion creates physics-based interactions, sending particles flying across the screen.
+*   Explosion particles can affect other symbols they encounter, altering their trajectory.
+*   Affected symbols temporarily drift in physics-based motion with gradual damping, creating elegant wave-like effects.
+*   Extended animation durations (2.4 seconds) create longer-lasting, more mesmerizing visual impact.
+*   Symbols hit by explosion particles can change color, taking on properties of the explosion.
+*   Multiple physics-based explosions can create complex, graceful patterns as symbols interact.
+*   More particles per explosion and larger maximum radius for spectacular visual impact.
+*   All explosion effects automatically adapt to the current color theme for visual consistency.
