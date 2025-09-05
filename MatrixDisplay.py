@@ -74,13 +74,14 @@ class ExplosionParticle:
         
     def check_collision(self, symbol):
         """Check if this particle collides with a symbol"""
-        # Simple distance-based collision
+        # Optimized: use squared distance to avoid expensive sqrt()
         collision_dist = self.size + symbol.size
+        collision_dist_sq = collision_dist * collision_dist
         dx = self.pos.x() - symbol.pos.x()
         dy = self.pos.y() - symbol.pos.y()
-        dist = math.sqrt(dx*dx + dy*dy)
+        dist_sq = dx*dx + dy*dy
         
-        return dist < collision_dist
+        return dist_sq < collision_dist_sq
     
     def affect_symbol(self, symbol):
         """Apply physics effect to a symbol when hit"""
@@ -88,11 +89,15 @@ class ExplosionParticle:
         dx = symbol.pos.x() - self.pos.x()
         dy = symbol.pos.y() - self.pos.y()
         
-        # Normalize
-        length = math.sqrt(dx*dx + dy*dy)
-        if length > 0:
+        # Optimized: avoid sqrt for normalization when possible
+        length_sq = dx*dx + dy*dy
+        if length_sq > 0.001:  # Avoid division by very small numbers
+            length = math.sqrt(length_sq)
             dx /= length
             dy /= length
+        else:
+            # Use default direction if symbols are too close
+            dx, dy = 1.0, 0.0
             
         # Apply impulse to symbol velocity - random drift plus directed force
         symbol.drift_x = dx * self.hit_force + random.uniform(-1, 1)
@@ -106,6 +111,10 @@ class ExplosionParticle:
 
 class CodeEffect:
     """Represents a special effect when symbols explode randomly"""
+    # Class-level symbol pool for better performance
+    SYMBOL_POOL = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
+    SYMBOL_POOL_LEN = len(SYMBOL_POOL)
+    
     def __init__(self, x_pos, y_pos, color, start_time, size_factor=1.0):
         self.x_pos = x_pos                # X position of explosion
         self.y_pos = y_pos                # Y position of explosion
@@ -123,7 +132,6 @@ class CodeEffect:
         
         # Generate effect symbols (more symbols for richer effect)
         num_symbols = int(20 * size_factor)  # Scale number of particles with size
-        symbol_pool = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
         
         # Always use blood red for explosion particles
         blood_red = QColor(200, 0, 0, 220)
@@ -131,8 +139,8 @@ class CodeEffect:
         
         # Create particle objects
         for i in range(num_symbols):
-            # Random symbol from pool
-            symbol = random.choice(symbol_pool)
+            # Random symbol from cached pool
+            symbol = self.SYMBOL_POOL[random.randrange(self.SYMBOL_POOL_LEN)]
             
             # Calculate direction angles with variation
             angle = 2 * math.pi * i / num_symbols + random.uniform(-0.2, 0.2)
@@ -180,12 +188,15 @@ class CodeEffect:
             # Update particle position
             particle.update(elapsed_since_last)
             
-            # Check for collisions with symbols
-            for symbol in symbols:
+            # Check for collisions with symbols (optimized)
+            for i, symbol in enumerate(symbols):
                 if symbol is not None and symbol.is_active:
                     if particle.check_collision(symbol):
                         # Apply physics effect to symbol
                         particle.affect_symbol(symbol)
+                        # Deactivate particle after first collision for performance
+                        particle.active = False
+                        break
             
             # Create occasional trails
             if random.random() < 0.4 and progress > 0.1:
@@ -232,6 +243,10 @@ class CodeEffect:
 
 class MatrixSymbol:
     """Represents a falling Matrix symbol"""
+    # Class-level symbol pool for better performance
+    SYMBOL_POOL = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
+    SYMBOL_POOL_LEN = len(SYMBOL_POOL)
+    
     def __init__(self, x, y, speed, color, size):
         self.pos = QPointF(x, y)
         self.last_pos = QPointF(x, y)  # Track previous position for trail generation
@@ -260,9 +275,8 @@ class MatrixSymbol:
         self.affected_by_explosion = False  # Flag to track if affected
         self.drift_damping = 0.95       # Damping factor to gradually reduce drift
         
-        # Choose a random Matrix-like character (combining ASCII, numbers, and Japanese katakana)
-        symbol_pool = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
-        self.symbol = random.choice(symbol_pool)
+        # Choose a random Matrix-like character from cached pool
+        self.symbol = self.SYMBOL_POOL[random.randrange(self.SYMBOL_POOL_LEN)]
         
         # Randomize fall time before disappearing
         self.max_fall_time = random.uniform(10, 30)  # Between 10 and 30 seconds
@@ -279,6 +293,16 @@ class MatrixSymbol:
 class MatrixWindow(QWidget):
     def __init__(self):
         super().__init__()
+        
+        # --- Performance Optimizations ---
+        # Pre-defined symbol pool for better performance
+        self.symbol_pool = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
+        self.symbol_pool_len = len(self.symbol_pool)
+        
+        # Pre-calculated colors for better performance
+        self._blood_red_cache = QColor(200, 0, 0, 220)
+        self._trail_alpha_cache = {}  # Cache for trail alpha calculations
+        # ------------------------------
         
         # --- Performance Tracking ---
         self.last_frame_time = time.time()
@@ -555,13 +579,18 @@ class MatrixWindow(QWidget):
             else:
                 i += 1
                 
-        # --- Clean up expired symbol trails ---
-        i = 0
-        while i < len(self.symbol_trails):
-            if not self.symbol_trails[i].is_active(current_time):
-                self.symbol_trails.pop(i)
-            else:
-                i += 1
+        # --- Clean up expired symbol trails (optimized batch cleanup) ---
+        if len(self.symbol_trails) > 100:  # Only clean up when we have many trails
+            # Use list comprehension for faster cleanup
+            self.symbol_trails = [trail for trail in self.symbol_trails if trail.is_active(current_time)]
+        else:
+            # Regular cleanup for smaller lists
+            i = 0
+            while i < len(self.symbol_trails):
+                if not self.symbol_trails[i].is_active(current_time):
+                    self.symbol_trails.pop(i)
+                else:
+                    i += 1
 
         # --- Update Symbol Positions & Check for Random Explosions ---
         for i, s in enumerate(self.symbols):
@@ -600,8 +629,8 @@ class MatrixWindow(QWidget):
             s.change_counter += 1
             if s.change_counter >= random.randint(5, 20):  # Change frequency varies
                 s.change_counter = 0
-                symbol_pool = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
-                s.symbol = random.choice(symbol_pool)
+                # Use cached symbol pool for better performance
+                s.symbol = self.symbol_pool[random.randrange(self.symbol_pool_len)]
             
             # Create trails behind falling symbols
             s.trail_counter += 1
@@ -615,13 +644,13 @@ class MatrixWindow(QWidget):
                     # Set alpha to be less than the symbol
                     trail_color.setAlpha(int(s.color.alpha() * 0.6))
                     
-                    # Add trail at the last position with 60-second duration
+                    # Add trail at the last position with optimized 30-second duration
                     self.symbol_trails.append(
                         SymbolTrail(
                             s.symbol,
                             s.last_pos.x(), s.last_pos.y(),
                             trail_color, current_time,
-                            duration=60.0  # 60-second trail duration
+                            duration=30.0  # Reduced from 60 to 30 seconds for better performance
                         )
                     )
             
@@ -630,8 +659,8 @@ class MatrixWindow(QWidget):
                 self.remove_symbol(i)
                 continue
             
-            # Random explosion with 0.0005% chance per symbol (half the original chance)
-            if random.random() < 0.000005:  # 0.0005% chance (reduced by 50% from 0.001%)
+            # Random explosion with 0.0003% chance per symbol (further reduced for performance)
+            if random.random() < 0.000003:  # 0.0003% chance (reduced from 0.0005% for better performance)
                 # Mark this symbol for explosion (will happen in 3 seconds)
                 s.rigged_to_explode = True
                 s.explosion_time = current_time + 3.0
@@ -642,15 +671,14 @@ class MatrixWindow(QWidget):
                 # If it's time to explode
                 if hasattr(s, 'explosion_time') and current_time >= s.explosion_time:
                     # Create a code effect at the current position
-                    # Blood red color for explosion
-                    blood_red = QColor(200, 0, 0, 220)
+                    # Use cached blood red color for explosion
                     
                     # Randomize explosion size between 0.5 and 2.5 times base size
                     size_factor = random.uniform(0.5, 2.5)
                     
                     # Add code effect with current time as start time
                     self.code_effects.append(
-                        CodeEffect(s.pos.x(), s.pos.y(), blood_red, current_time, size_factor)
+                        CodeEffect(s.pos.x(), s.pos.y(), self._blood_red_cache, current_time, size_factor)
                     )
                     
                     # Remove symbol after it explodes
@@ -686,7 +714,10 @@ class MatrixWindow(QWidget):
         for effect in self.code_effects:
             effect.draw(painter, current_time)
         
-        # --- Draw Matrix Symbols ---
+        # --- Draw Matrix Symbols (optimized) ---
+        base_font = QFont(font)
+        current_font_size = -1  # Track current font size to avoid redundant operations
+        
         for s in self.symbols:
             if s is None or not s.is_active:
                 continue
@@ -702,8 +733,8 @@ class MatrixWindow(QWidget):
                 )
                 painter.fillRect(square_rect, s.square_color)
             
-            # Set font size for this symbol
-            symbol_font = QFont(font)
+            # Calculate target font size
+            target_font_size = s.size
             
             # Check if symbol is rigged to explode
             if hasattr(s, 'rigged_to_explode') and s.rigged_to_explode:
@@ -714,13 +745,16 @@ class MatrixWindow(QWidget):
                 
                 # Increase size for emphasis (pulsating size)
                 size_multiplier = 1.0 + 0.5 * pulse_intensity
-                symbol_font.setPointSizeF(s.size * size_multiplier)
+                target_font_size = s.size * size_multiplier
             else:
                 # Normal symbol
-                symbol_font.setPointSizeF(s.size)
                 painter.setPen(s.color)
             
-            painter.setFont(symbol_font)
+            # Only update font if size changed (optimization)
+            if current_font_size != target_font_size:
+                base_font.setPointSizeF(target_font_size)
+                painter.setFont(base_font)
+                current_font_size = target_font_size
             
             # Draw the symbol
             painter.drawText(s.pos, s.symbol)
