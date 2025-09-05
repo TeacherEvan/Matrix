@@ -1,3 +1,3 @@
 @echo off
-start "" python MatrixDisplay.py
+start "Matrix Display" python MatrixDisplay.py
 exit 
