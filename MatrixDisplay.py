@@ -302,6 +302,10 @@ class MatrixWindow(QWidget):
         # Pre-calculated colors for better performance
         self._blood_red_cache = QColor(200, 0, 0, 220)
         self._trail_alpha_cache = {}  # Cache for trail alpha calculations
+        
+        # Performance counters
+        self._total_symbols_created = 0
+        self._total_trails_created = 0
         # ------------------------------
         
         # --- Performance Tracking ---
@@ -532,6 +536,7 @@ class MatrixWindow(QWidget):
 
                 self.symbols[i] = MatrixSymbol(x, y, speed, color, size)
                 self.symbol_count += 1
+                self._total_symbols_created += 1
                 return
     
     def remove_symbol(self, index):
@@ -558,7 +563,13 @@ class MatrixWindow(QWidget):
         if len(self.frame_times) >= 60:
             avg_frame_time = sum(self.frame_times) / len(self.frame_times)
             if avg_frame_time > 0.05:  # More than 50ms (less than 20fps)
-                print(f"Warning: Average frame time is {avg_frame_time*1000:.1f}ms (ideally < 50ms)")
+                print(f"Performance Warning: Avg frame time {avg_frame_time*1000:.1f}ms | "
+                      f"Symbols: {self.symbol_count}/{self.max_symbols} | "
+                      f"Trails: {len(self.symbol_trails)} | "
+                      f"Effects: {len(self.code_effects)}")
+            elif len(self.frame_times) == 60:  # Log performance stats periodically
+                print(f"Performance: {avg_frame_time*1000:.1f}ms avg | "
+                      f"Symbols: {self.symbol_count} | Trails: {len(self.symbol_trails)}")
         
         widget_height = self.overlay_height
         
@@ -592,7 +603,9 @@ class MatrixWindow(QWidget):
                 else:
                     i += 1
 
-        # --- Update Symbol Positions & Check for Random Explosions ---
+        # --- Update Symbol Positions & Check for Random Explosions (optimized) ---
+        symbols_to_remove = []  # Batch removal for better performance
+        
         for i, s in enumerate(self.symbols):
             if s is None or not s.is_active:
                 continue
@@ -653,6 +666,7 @@ class MatrixWindow(QWidget):
                             duration=30.0  # Reduced from 60 to 30 seconds for better performance
                         )
                     )
+                    self._total_trails_created += 1
             
             # Check if symbol has been falling too long (based on randomized max_fall_time)
             if current_time - s.birth_time > s.max_fall_time:

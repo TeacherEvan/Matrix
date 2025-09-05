@@ -26,3 +26,6 @@ Thumbs.db
 *.tmp
 *.temp
 /tmp/
+
+# Test files
+test_performance*.py
