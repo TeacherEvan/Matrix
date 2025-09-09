@@ -20,7 +20,7 @@ pip install PyQt6 psutil pywin32
 **Installation Commands (VALIDATED):**
 ```bash
 # Install Python dependencies - NEVER CANCEL: Takes 60-90 seconds
-pip install PyQt6 psutil pywin32 --timeout=300
+pip install PyQt6 psutil pywin32
 ```
 
 ## Working Effectively
@@ -32,7 +32,7 @@ git clone <repository-url>
 cd Matrix
 
 # Install dependencies - NEVER CANCEL: Allow 60+ seconds for PyQt6 installation
-pip install PyQt6 psutil pywin32 --timeout=300
+pip install PyQt6 psutil pywin32
 
 # Verify installation
 python -c "import PyQt6, psutil; print('Dependencies OK')"
@@ -165,7 +165,7 @@ except Exception as e:
 ### After Making Changes
 1. **Syntax Validation** (Required - works anywhere):
 ```bash
-python -c "import ast; ast.parse(open('MatrixDisplay.py').read()); print('SYNTAX: OK')"
+python -c "import ast; f=open('MatrixDisplay.py'); ast.parse(f.read()); f.close(); print('SYNTAX: OK')"
 ```
 
 2. **Import Testing** (Partial - Windows features will fail on Linux):
@@ -277,14 +277,14 @@ time.sleep(10)  # Load CPU for 10 seconds
 ```bash
 # Complete setup from fresh clone
 git clone <repo> && cd Matrix
-pip install PyQt6 psutil pywin32 --timeout=300
-python -c "import ast; ast.parse(open('MatrixDisplay.py').read()); print('READY')"
+pip install PyQt6 psutil pywin32
+python -c "import ast; f=open('MatrixDisplay.py'); ast.parse(f.read()); f.close(); print('READY')"
 
 # Run application (Windows only)
 python MatrixDisplay.py
 
 # Validate changes
-python -c "import ast; ast.parse(open('MatrixDisplay.py').read()); print('SYNTAX: OK')"
+python -c "import ast; f=open('MatrixDisplay.py'); ast.parse(f.read()); f.close(); print('SYNTAX: OK')"
 
 # Performance check
 python -c "import psutil; print(f'CPU: {psutil.cpu_percent(interval=1)}%')"
