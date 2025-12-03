@@ -19,6 +19,8 @@ import psutil
 class SymbolTrail:
     """Represents a fading trail left behind a symbol"""
     # Class-level reusable color object for drawing (optimization)
+    # Note: Safe to reuse because Qt painting is single-threaded and
+    # the color is set immediately before drawText in each iteration
     _draw_color = QColor()
     
     def __init__(self, symbol, pos_x, pos_y, color, start_time, duration=60.0):
@@ -120,7 +122,9 @@ class ExplosionParticle:
         # Flag symbol as affected
         symbol.affected_by_explosion = True
         
-        # Optimized: use class-level cached color instead of creating new QColor
+        # Change symbol color to blood red when affected
+        # Note: Using cached color is safe here because symbol.color is only read
+        # after this assignment, never modified with setAlpha/setRgb
         symbol.color = ExplosionParticle._BLOOD_RED
 
 class CodeEffect:
@@ -130,9 +134,12 @@ class CodeEffect:
     SYMBOL_POOL_LEN = len(SYMBOL_POOL)
     
     # Class-level cached colors to avoid repeated QColor creation
+    # Note: _BLOOD_RED_* are immutable after creation (never call setXXX on them)
     _BLOOD_RED_220 = QColor(200, 0, 0, 220)
     _BLOOD_RED_180 = QColor(200, 0, 0, 180)
-    _draw_color = QColor()  # Reusable color for drawing
+    # Reusable color for drawing - safe because Qt painting is single-threaded
+    # and the color is set immediately before each draw call
+    _draw_color = QColor()
     
     # Cache for math functions
     _cos = math.cos
@@ -343,7 +350,9 @@ class MatrixWindow(QWidget):
         # Pre-calculated colors for better performance
         self._blood_red_cache = QColor(200, 0, 0, 220)
         self._trail_alpha_cache = {}  # Cache for trail alpha calculations
-        self._white_pulse_cache = QColor(255, 255, 255, 255)  # Reusable white color for pulsating
+        # Reusable white color for pulsating - intentionally mutated via setAlpha()
+        # each frame to avoid creating a new QColor object
+        self._white_pulse_cache = QColor(255, 255, 255, 255)
         
         # Performance counters
         self._total_symbols_created = 0
