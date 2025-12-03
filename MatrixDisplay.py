@@ -200,14 +200,19 @@ class CodeEffect:
     Particles can interact with other falling symbols, affecting their movement
     and changing their colors.
     
+    Note:
+        The color parameter is stored but the actual particle color is always
+        blood red (QColor(200, 0, 0, 220)) for visual consistency.
+    
     Attributes:
         x_pos: X coordinate of explosion center.
         y_pos: Y coordinate of explosion center.
-        color: Base color for the explosion effect.
+        color: Base color parameter (stored but particles use blood red).
         start_time: Timestamp when the effect started.
         duration: How long the effect lasts in seconds.
         size_factor: Multiplier for explosion size (0.5 to 2.5).
         particles: List of ExplosionParticle objects.
+        effect_color: Actual color used for particles (blood red).
     """
     
     # Class-level symbol pool for better performance
@@ -220,7 +225,7 @@ class CodeEffect:
         Args:
             x_pos: X coordinate of explosion center.
             y_pos: Y coordinate of explosion center.
-            color: Base color for the effect.
+            color: Base color parameter (stored but particles use blood red).
             start_time: Timestamp when the effect started.
             size_factor: Size multiplier for the explosion (default: 1.0).
         """
@@ -405,18 +410,20 @@ class MatrixSymbol:
             x_position: Initial X coordinate.
             y_position: Initial Y coordinate.
             fall_speed: Speed at which the symbol falls.
-            symbol_color: Color of the symbol.
+            symbol_color: Color of the symbol (will be copied, not modified).
             font_size: Size for rendering the symbol.
         """
         self.pos = QPointF(x_position, y_position)
         self.last_pos = QPointF(x_position, y_position)  # Track previous position for trail generation
         self.speed = fall_speed
         
+        # Create a copy of the color to avoid modifying the original
+        adjusted_color = QColor(symbol_color)
         # Increase transparency by 40% in total (30% + additional 10%) by reducing alpha
-        original_alpha = symbol_color.alpha()
+        original_alpha = adjusted_color.alpha()
         reduced_alpha = int(original_alpha * 0.6)  # 40% more transparent
-        symbol_color.setAlpha(reduced_alpha)
-        self.color = symbol_color
+        adjusted_color.setAlpha(reduced_alpha)
+        self.color = adjusted_color
         
         self.size = font_size * 1.0  # Original size (changed from 0.8 to 1.0)
         self.is_active = True
