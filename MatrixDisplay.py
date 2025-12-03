@@ -18,12 +18,17 @@ import psutil
 
 class SymbolTrail:
     """Represents a fading trail left behind a symbol"""
+    # Class-level reusable color object for drawing (optimization)
+    _draw_color = QColor()
+    
     def __init__(self, symbol, pos_x, pos_y, color, start_time, duration=60.0):
         self.symbol = symbol         # The Matrix symbol character
         self.pos = QPointF(pos_x, pos_y)  # Position of the trail
         self.color = color           # Base color of trail
         self.start_time = start_time # Time when trail was created
         self.duration = duration     # How long the trail remains visible
+        # Pre-calculate the base alpha for faster draw operations
+        self._base_alpha = color.alpha() * 0.56  # 0.7 * 0.8 = 0.56 (30% + 20% more transparent)
         
     def is_active(self, current_time):
         """Check if the trail is still active"""
@@ -36,22 +41,31 @@ class SymbolTrail:
         
     def draw(self, painter, current_time):
         """Draw the symbol trail with fading effect"""
-        if not self.is_active(current_time):
+        # Optimized: inline is_active check to avoid method call overhead
+        elapsed = current_time - self.start_time
+        if elapsed >= self.duration:
             return
             
-        fade_factor = self.get_fade_factor(current_time)
+        # Optimized: calculate fade factor inline
+        fade_factor = 1.0 - elapsed / self.duration
         
-        # Adjust alpha based on fade factor with increased transparency (additional 20% reduction)
-        trail_alpha = int(self.color.alpha() * fade_factor * 0.56)  # 0.7 * 0.8 = 0.56 (30% + 20% more transparent)
-        trail_color = QColor(self.color)
-        trail_color.setAlpha(trail_alpha)
+        # Optimized: use pre-calculated base alpha and reuse class-level color object
+        trail_alpha = int(self._base_alpha * fade_factor)
+        SymbolTrail._draw_color.setRgb(
+            self.color.red(), self.color.green(), self.color.blue(), trail_alpha
+        )
         
-        painter.setPen(trail_color)
-        painter.setFont(painter.font())  # Use current font
+        painter.setPen(SymbolTrail._draw_color)
+        # Removed redundant painter.setFont() call - uses current font automatically
         painter.drawText(self.pos, self.symbol)
 
 class ExplosionParticle:
     """Represents a single particle in an explosion that can interact with other symbols"""
+    # Class-level cached color to avoid creating new QColor in hot paths
+    _BLOOD_RED = QColor(200, 0, 0, 220)
+    # Cache math.sqrt for faster access
+    _sqrt = math.sqrt
+    
     def __init__(self, symbol, x_pos, y_pos, direction, speed, color, size):
         self.symbol = symbol
         self.pos = QPointF(x_pos, y_pos)
@@ -89,10 +103,10 @@ class ExplosionParticle:
         dx = symbol.pos.x() - self.pos.x()
         dy = symbol.pos.y() - self.pos.y()
         
-        # Optimized: avoid sqrt for normalization when possible
+        # Optimized: avoid sqrt for normalization when possible, use cached sqrt
         length_sq = dx*dx + dy*dy
         if length_sq > 0.001:  # Avoid division by very small numbers
-            length = math.sqrt(length_sq)
+            length = ExplosionParticle._sqrt(length_sq)
             dx /= length
             dy /= length
         else:
@@ -106,14 +120,24 @@ class ExplosionParticle:
         # Flag symbol as affected
         symbol.affected_by_explosion = True
         
-        # Change symbol color to blood red when affected
-        symbol.color = QColor(200, 0, 0, 220)  # Blood red with high alpha
+        # Optimized: use class-level cached color instead of creating new QColor
+        symbol.color = ExplosionParticle._BLOOD_RED
 
 class CodeEffect:
     """Represents a special effect when symbols explode randomly"""
     # Class-level symbol pool for better performance
     SYMBOL_POOL = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
     SYMBOL_POOL_LEN = len(SYMBOL_POOL)
+    
+    # Class-level cached colors to avoid repeated QColor creation
+    _BLOOD_RED_220 = QColor(200, 0, 0, 220)
+    _BLOOD_RED_180 = QColor(200, 0, 0, 180)
+    _draw_color = QColor()  # Reusable color for drawing
+    
+    # Cache for math functions
+    _cos = math.cos
+    _sin = math.sin
+    _sqrt = math.sqrt
     
     def __init__(self, x_pos, y_pos, color, start_time, size_factor=1.0):
         self.x_pos = x_pos                # X position of explosion
@@ -133,9 +157,12 @@ class CodeEffect:
         # Generate effect symbols (more symbols for richer effect)
         num_symbols = int(20 * size_factor)  # Scale number of particles with size
         
-        # Always use blood red for explosion particles
-        blood_red = QColor(200, 0, 0, 220)
-        self.effect_color = blood_red
+        # Reuse class-level cached color
+        self.effect_color = CodeEffect._BLOOD_RED_220
+        
+        # Pre-calculate constants for particle creation
+        two_pi = 2 * math.pi
+        sqrt_size = CodeEffect._sqrt(size_factor)
         
         # Create particle objects
         for i in range(num_symbols):
@@ -143,11 +170,11 @@ class CodeEffect:
             symbol = self.SYMBOL_POOL[random.randrange(self.SYMBOL_POOL_LEN)]
             
             # Calculate direction angles with variation
-            angle = 2 * math.pi * i / num_symbols + random.uniform(-0.2, 0.2)
-            direction = (math.cos(angle), math.sin(angle))
+            angle = two_pi * i / num_symbols + random.uniform(-0.2, 0.2)
+            direction = (CodeEffect._cos(angle), CodeEffect._sin(angle))
             
             # Random speeds (vary based on size factor) - reduced by 50%
-            speed = random.uniform(10, 25) * math.sqrt(size_factor)  # Reduced from 20-50 to 10-25
+            speed = random.uniform(10, 25) * sqrt_size  # Reduced from 20-50 to 10-25
             
             # Create particle with randomized size
             particle_size = random.uniform(2, 5) * size_factor
@@ -200,15 +227,13 @@ class CodeEffect:
             
             # Create occasional trails
             if random.random() < 0.4 and progress > 0.1:
-                # Always use blood red for trails
-                blood_red = QColor(200, 0, 0, 180)
-                
+                # Optimized: use class-level cached blood red color
                 # Create a fading trail
                 new_trails.append(
                     SymbolTrail(
                         particle.symbol,
                         particle.pos.x(), particle.pos.y(),
-                        blood_red, 
+                        CodeEffect._BLOOD_RED_180, 
                         current_time,
                         duration=1.2  # Short duration doubled (from 0.6 to 1.2)
                     )
@@ -225,18 +250,24 @@ class CodeEffect:
         
         # Fade out particles as the animation progresses
         alpha = int(255 * (1.0 - progress * 0.7))
-        # Always use blood red for particles
-        particle_color = QColor(200, 0, 0, alpha)
+        # Optimized: reuse class-level color object instead of creating new QColor
+        CodeEffect._draw_color.setRgb(200, 0, 0, alpha)
         
-        painter.setPen(particle_color)
+        painter.setPen(CodeEffect._draw_color)
+        
+        # Optimized: get base font once and track size changes
+        base_font = QFont(painter.font())
+        current_font_size = -1
         
         # Draw each particle
         for particle in self.particles:
             if particle.active:
-                # Scale font for particle size
-                symbol_font = QFont(painter.font())
-                symbol_font.setPointSizeF(particle.size * 2.5)  # Already increased by 1.25x previously
-                painter.setFont(symbol_font)
+                target_size = particle.size * 2.5
+                # Only update font if size changed
+                if current_font_size != target_size:
+                    base_font.setPointSizeF(target_size)
+                    painter.setFont(base_font)
+                    current_font_size = target_size
                 
                 # Draw the particle
                 painter.drawText(particle.pos, particle.symbol)
@@ -246,6 +277,9 @@ class MatrixSymbol:
     # Class-level symbol pool for better performance
     SYMBOL_POOL = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
     SYMBOL_POOL_LEN = len(SYMBOL_POOL)
+    
+    # Pre-cached shared color for squares (optimization: avoid per-instance creation)
+    _SQUARE_COLOR = QColor(255, 255, 255, 120)
     
     def __init__(self, x, y, speed, color, size):
         self.pos = QPointF(x, y)
@@ -263,9 +297,9 @@ class MatrixSymbol:
         self.change_counter = 0         # Counter for changing the symbol
         self.trail_counter = 0          # Counter to control trail frequency
         
-        # Square properties
+        # Square properties - use class-level cached color
         self.has_square = True
-        self.square_color = QColor(255, 255, 255, 120)  # White semi-transparent
+        self.square_color = MatrixSymbol._SQUARE_COLOR  # Reuse shared color instance
         self.square_flash_timer = 0
         self.square_visible = True
         
@@ -274,6 +308,10 @@ class MatrixSymbol:
         self.drift_y = 0                # Vertical drift (added by explosions)
         self.affected_by_explosion = False  # Flag to track if affected
         self.drift_damping = 0.95       # Damping factor to gradually reduce drift
+        
+        # Explosion properties - pre-initialized to avoid hasattr() checks in hot paths
+        self.rigged_to_explode = False  # Flag for delayed explosion
+        self.explosion_time = 0.0       # Time when explosion should trigger
         
         # Choose a random Matrix-like character from cached pool
         self.symbol = self.SYMBOL_POOL[random.randrange(self.SYMBOL_POOL_LEN)]
@@ -291,6 +329,9 @@ class MatrixSymbol:
             self.color = bright_color
 
 class MatrixWindow(QWidget):
+    # Class-level cached math functions for performance
+    _sin = math.sin  # Cache math.sin for faster access in hot loops
+    
     def __init__(self):
         super().__init__()
         
@@ -302,6 +343,7 @@ class MatrixWindow(QWidget):
         # Pre-calculated colors for better performance
         self._blood_red_cache = QColor(200, 0, 0, 220)
         self._trail_alpha_cache = {}  # Cache for trail alpha calculations
+        self._white_pulse_cache = QColor(255, 255, 255, 255)  # Reusable white color for pulsating
         
         # Performance counters
         self._total_symbols_created = 0
@@ -651,17 +693,23 @@ class MatrixWindow(QWidget):
                 s.trail_counter = 0
                 
                 # Only create trails if there has been movement
-                if abs(s.last_pos.y() - s.pos.y()) > 0.5 or abs(s.last_pos.x() - s.pos.x()) > 0.5:
-                    # Create a trail with slightly transparent version of symbol color
+                # Optimized: cache position values to avoid repeated method calls
+                last_y = s.last_pos.y()
+                last_x = s.last_pos.x()
+                pos_y = s.pos.y()
+                pos_x = s.pos.x()
+                
+                if abs(last_y - pos_y) > 0.5 or abs(last_x - pos_x) > 0.5:
+                    # Optimized: calculate trail alpha once and create color efficiently
+                    trail_alpha = int(s.color.alpha() * 0.6)
                     trail_color = QColor(s.color)
-                    # Set alpha to be less than the symbol
-                    trail_color.setAlpha(int(s.color.alpha() * 0.6))
+                    trail_color.setAlpha(trail_alpha)
                     
                     # Add trail at the last position with optimized 30-second duration
                     self.symbol_trails.append(
                         SymbolTrail(
                             s.symbol,
-                            s.last_pos.x(), s.last_pos.y(),
+                            last_x, last_y,
                             trail_color, current_time,
                             duration=30.0  # Reduced from 60 to 30 seconds for better performance
                         )
@@ -681,23 +729,22 @@ class MatrixWindow(QWidget):
                 continue
 
             # Check if symbol is rigged to explode and it's time
-            if hasattr(s, 'rigged_to_explode') and s.rigged_to_explode:
-                # If it's time to explode
-                if hasattr(s, 'explosion_time') and current_time >= s.explosion_time:
-                    # Create a code effect at the current position
-                    # Use cached blood red color for explosion
-                    
-                    # Randomize explosion size between 0.5 and 2.5 times base size
-                    size_factor = random.uniform(0.5, 2.5)
-                    
-                    # Add code effect with current time as start time
-                    self.code_effects.append(
-                        CodeEffect(s.pos.x(), s.pos.y(), self._blood_red_cache, current_time, size_factor)
-                    )
-                    
-                    # Remove symbol after it explodes
-                    self.remove_symbol(i)
-                    continue
+            # Optimized: removed hasattr() checks since attributes are pre-initialized
+            if s.rigged_to_explode and current_time >= s.explosion_time:
+                # Create a code effect at the current position
+                # Use cached blood red color for explosion
+                
+                # Randomize explosion size between 0.5 and 2.5 times base size
+                size_factor = random.uniform(0.5, 2.5)
+                
+                # Add code effect with current time as start time
+                self.code_effects.append(
+                    CodeEffect(s.pos.x(), s.pos.y(), self._blood_red_cache, current_time, size_factor)
+                )
+                
+                # Remove symbol after it explodes
+                self.remove_symbol(i)
+                continue
             
             # Remove symbol if it goes outside the widget bounds
             if (s.pos.y() > widget_height + 20 or 
@@ -737,7 +784,8 @@ class MatrixWindow(QWidget):
                 continue
             
             # Draw flashing square first (if visible)
-            if hasattr(s, 'square_visible') and s.square_visible and hasattr(s, 'has_square') and s.has_square:
+            # Optimized: removed hasattr() checks since attributes are pre-initialized
+            if s.square_visible and s.has_square:
                 square_size = s.size
                 square_rect = QRect(
                     int(s.pos.x()), 
@@ -751,11 +799,14 @@ class MatrixWindow(QWidget):
             target_font_size = s.size
             
             # Check if symbol is rigged to explode
-            if hasattr(s, 'rigged_to_explode') and s.rigged_to_explode:
+            # Optimized: removed hasattr() check since attribute is pre-initialized
+            if s.rigged_to_explode:
                 # Pulsating white effect for symbols about to explode
-                pulse_intensity = 0.5 + 0.5 * math.sin(current_time * 5)  # 0.5 to 1.0 pulsating
-                white_color = QColor(255, 255, 255, int(255 * pulse_intensity))
-                painter.setPen(white_color)
+                # Optimized: use cached sin function for faster attribute lookup
+                pulse_intensity = 0.5 + 0.5 * MatrixWindow._sin(current_time * 5)  # 0.5 to 1.0 pulsating
+                # Optimized: reuse cached white color and just update alpha
+                self._white_pulse_cache.setAlpha(int(255 * pulse_intensity))
+                painter.setPen(self._white_pulse_cache)
                 
                 # Increase size for emphasis (pulsating size)
                 size_multiplier = 1.0 + 0.5 * pulse_intensity
