@@ -1,0 +1,5 @@
+# Pinned lower bounds (compatible with Python 3.7+) for MatrixDisplay.py
+# Windows-only runtime; do not install on Linux for GUI testing.
+PyQt6>=6.5.0
+psutil>=5.9.0
+pywin32>=306; sys_platform == 'win32'

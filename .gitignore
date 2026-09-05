@@ -29,3 +29,10 @@ Thumbs.db
 
 # Test files
 test_performance*.py
+
+# Hermes V2 audit scratch (never committed)
+docs/.scratch-audit/
+
+# Hermes local run logs
+.run.log
+.pytest_cache/
