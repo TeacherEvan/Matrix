@@ -2,11 +2,16 @@ import sys
 import random
 import time
 import math
+import logging
 from collections import deque
 # PyQt6 is generally recommended over PySide6 unless specific licensing is a concern
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
 from PyQt6.QtCore import Qt, QTimer, QRect, QPointF
 from PyQt6.QtGui import QPainter, QColor, QPen, QScreen, QPainterPath, QBrush, QLinearGradient, QFont
+
+# Module-level logger for diagnostic output (OBJ-011).
+logger = logging.getLogger(__name__)
+
 
 # pywin32 for Windows-specific features
 import win32gui
@@ -472,9 +477,30 @@ class MatrixWindow(QWidget):
         is_suspended: Whether the display is currently suspended.
     """
     
-    def __init__(self):
-        """Initialize the Matrix display window and all subsystems."""
+    def __init__(self, rng=None):
+        """Initialize the Matrix display window and all subsystems.
+
+        Parameters
+        ----------
+        rng : random.Random, optional
+            Injectable RNG used for testable randomness (symbol spawn,
+            drift, explosion probability). When ``None`` (the default),
+            a fresh un-seeded ``random.Random`` instance is used; the
+            global ``random`` module is intentionally NOT consulted
+            so test runs can be made deterministic via seeding.
+
+        Side effects
+        ------------
+        Configures the QWidget (title, flags, transparency, geometry),
+        pre-builds symbol pools and color caches, schedules the
+        render + monitoring timers, and grabs the native ``winId`` for
+        later Windows-specific layering.
+        """
         super().__init__()
+
+        # Optional RNG (OBJ-001 surface; defaults preserve prior behavior
+        # because tests pass a seeded instance explicitly).
+        self.rng = rng if rng is not None else random.Random()
         
         # --- Performance Optimizations ---
         # Pre-defined symbol pool for better performance

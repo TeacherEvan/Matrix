@@ -58,4 +58,27 @@ This project is available under the MIT License.
 
 ## Acknowledgments
 
-Inspired by the digital rain effect from "The Matrix" film series. 
+Inspired by the digital rain effect from "The Matrix" film series.
+
+## Testing
+
+The repository ships with an AST-level smoke test suite that runs on any
+platform (Windows, Linux, macOS) without requiring PyQt6 / pywin32 runtime
+support. The full GUI application only runs on Windows.
+
+Install test dependencies and run the suite:
+
+```
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest tests/ -v
+```
+
+Or use the bundled wrapper:
+
+```
+./scripts/run_tests.sh
+```
+
+The suite validates the structural surface (classes, methods, entry point,
+imports, no hardcoded secrets) declared in the project specification. It
+will not exercise the actual PyQt6 paint loop.
