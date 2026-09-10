@@ -114,7 +114,7 @@ class ExplosionParticle:
         hit_force: Force applied to symbols on collision.
     """
     
-    def __init__(self, symbol, x_pos, y_pos, direction, speed, color, size):
+    def __init__(self, symbol, x_pos, y_pos, direction, speed, color, size, rng=None):
         """Initialize a new explosion particle.
         
         Args:
@@ -135,6 +135,7 @@ class ExplosionParticle:
         self.last_pos = QPointF(x_pos, y_pos)
         self.active = True
         self.hit_force = speed * 0.2  # Force applied to symbols when hit
+        self.rng = rng if rng is not None else random.Random()  # OBJ-004: RNG injection surface
         
     def update(self, elapsed_time):
         """Update position based on direction and speed.
@@ -188,8 +189,8 @@ class ExplosionParticle:
             direction_x, direction_y = 1.0, 0.0
             
         # Apply impulse to symbol velocity - random drift plus directed force
-        target_symbol.drift_x = direction_x * self.hit_force + random.uniform(-1, 1)
-        target_symbol.drift_y = direction_y * self.hit_force + random.uniform(-1, 1)
+        target_symbol.drift_x = direction_x * self.hit_force + self.rng.uniform(-1, 1)
+        target_symbol.drift_y = direction_y * self.hit_force + self.rng.uniform(-1, 1)
         
         # Flag symbol as affected
         target_symbol.affected_by_explosion = True
@@ -223,8 +224,7 @@ class CodeEffect:
     # Class-level symbol pool for better performance
     SYMBOL_POOL = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
     SYMBOL_POOL_LEN = len(SYMBOL_POOL)
-    
-    def __init__(self, x_pos, y_pos, color, start_time, size_factor=1.0):
+    def __init__(self, x_pos, y_pos, color, start_time, size_factor=1.0, rng=None):
         """Initialize a new explosion effect.
         
         Args:
@@ -240,6 +240,7 @@ class CodeEffect:
         self.start_time = start_time
         self.duration = 4.8  # Animation duration in seconds
         self.size_factor = size_factor
+        self.rng = rng if rng is not None else random.Random()  # OBJ-004: RNG injection surface
         
         # Base radius varies from 50 to 150 (randomized for each explosion)
         self.radius = 75 * self.size_factor
@@ -258,23 +259,23 @@ class CodeEffect:
         # Create particle objects
         for particle_index in range(particle_count):
             # Random symbol from cached pool
-            particle_symbol = self.SYMBOL_POOL[random.randrange(self.SYMBOL_POOL_LEN)]
+            particle_symbol = self.SYMBOL_POOL[self.rng.randrange(self.SYMBOL_POOL_LEN)]
             
             # Calculate direction angles with variation
-            angle = 2 * math.pi * particle_index / particle_count + random.uniform(-0.2, 0.2)
+            angle = 2 * math.pi * particle_index / particle_count + self.rng.uniform(-0.2, 0.2)
             direction = (math.cos(angle), math.sin(angle))
             
             # Random speeds (vary based on size factor) - reduced by 50%
-            particle_speed = random.uniform(10, 25) * math.sqrt(size_factor)  # Reduced from 20-50 to 10-25
+            particle_speed = self.rng.uniform(10, 25) * math.sqrt(size_factor)  # Reduced from 20-50 to 10-25
             
             # Create particle with randomized size
-            particle_size = random.uniform(2, 5) * size_factor
+            particle_size = self.rng.uniform(2, 5) * size_factor
             
             # Add particle
             self.particles.append(
                 ExplosionParticle(
-                    particle_symbol, x_pos, y_pos, direction, particle_speed, 
-                    self.effect_color, particle_size
+                    particle_symbol, x_pos, y_pos, direction, particle_speed,
+                    self.effect_color, particle_size, self.rng
                 )
             )
         
@@ -339,7 +340,7 @@ class CodeEffect:
                         break
             
             # Create occasional trails
-            if random.random() < 0.4 and animation_progress > 0.1:
+            if self.rng.random() < 0.4 and animation_progress > 0.1:
                 # Always use blood red for trails
                 blood_red = QColor(200, 0, 0, 180)
                 
@@ -407,8 +408,9 @@ class MatrixSymbol:
     # Class-level symbol pool for better performance
     SYMBOL_POOL = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"
     SYMBOL_POOL_LEN = len(SYMBOL_POOL)
+
+    def __init__(self, x_position, y_position, fall_speed, symbol_color, font_size, rng=None):
     
-    def __init__(self, x_position, y_position, fall_speed, symbol_color, font_size):
         """Initialize a new falling Matrix symbol.
         
         Args:
@@ -432,6 +434,7 @@ class MatrixSymbol:
         
         self.size = font_size * 1.0  # Original size (changed from 0.8 to 1.0)
         self.is_active = True
+        self.rng = rng if rng is not None else random.Random()  # OBJ-004: RNG injection surface
         self.change_counter = 0  # Counter for changing the symbol character
         self.trail_counter = 0   # Counter to control trail generation frequency
         
@@ -448,14 +451,14 @@ class MatrixSymbol:
         self.drift_damping = 0.95       # Damping factor to gradually reduce drift
         
         # Choose a random Matrix-like character from cached pool
-        self.symbol = self.SYMBOL_POOL[random.randrange(self.SYMBOL_POOL_LEN)]
+        self.symbol = self.SYMBOL_POOL[self.rng.randrange(self.SYMBOL_POOL_LEN)]
         
         # Randomize fall time before disappearing
-        self.max_fall_time = random.uniform(10, 30)  # Between 10 and 30 seconds
+        self.max_fall_time = self.rng.uniform(10, 30)  # Between 10 and 30 seconds
         self.birth_time = time.time()
         
         # Chance to have a brighter (lead) symbol
-        self.is_lead = random.random() < 0.15
+        self.is_lead = self.rng.random() < 0.15
         if self.is_lead:
             bright_color = QColor(self.color)
             bright_alpha = min(255, reduced_alpha + 70)  # Maintain 40% transparency increase
@@ -766,15 +769,17 @@ class MatrixWindow(QWidget):
         # Find first available slot
         for slot_index in range(self.max_symbols):
             if self.symbols[slot_index] is None or not self.symbols[slot_index].is_active:
-                spawn_x = x_position if x_position is not None else random.uniform(0, self.screen_width)
-                spawn_y = random.uniform(-20, 0)  # Start just above the view
-                fall_speed = random.uniform(1, 5)  # Base speed restored to original range (was 0.5-2.5, now doubled back)
-                symbol_color = random.choice(self.symbol_colors)
+                spawn_x = x_position if x_position is not None else self.rng.uniform(0, self.screen_width)
+                spawn_y = self.rng.uniform(-20, 0)  # Start just above the view
+                fall_speed = self.rng.uniform(1, 5)  # Base speed restored to original range (was 0.5-2.5, now doubled back)
+                symbol_color = self.rng.choice(self.symbol_colors)
                 # Adjust alpha based on speed (faster = brighter)
                 symbol_color.setAlpha(int(max(100, min(255, symbol_color.alpha() + fall_speed * 10))))
-                font_size = random.uniform(8, 12)  # Font size variation increased by 1.25x (from 6.4-9.6 to 8-12)
+                font_size = self.rng.uniform(8, 12)  # Font size variation increased by 1.25x (from 6.4-9.6 to 8-12)
 
-                self.symbols[slot_index] = MatrixSymbol(spawn_x, spawn_y, fall_speed, symbol_color, font_size)
+                self.symbols[slot_index] = MatrixSymbol(
+                    spawn_x, spawn_y, fall_speed, symbol_color, font_size, self.rng
+                )
                 self.symbol_count += 1
                 self._total_symbols_created += 1
                 return
@@ -891,10 +896,10 @@ class MatrixWindow(QWidget):
             
             # Occasionally change the symbol character (Matrix-like effect)
             current_symbol.change_counter += 1
-            if current_symbol.change_counter >= random.randint(5, 20):  # Change frequency varies
+            if current_symbol.change_counter >= self.rng.randint(5, 20):  # Change frequency varies
                 current_symbol.change_counter = 0
                 # Use cached symbol pool for better performance
-                current_symbol.symbol = self.symbol_pool[random.randrange(self.symbol_pool_len)]
+                current_symbol.symbol = self.symbol_pool[self.rng.randrange(self.symbol_pool_len)]
             
             # Create trails behind falling symbols
             current_symbol.trail_counter += 1
@@ -925,7 +930,7 @@ class MatrixWindow(QWidget):
                 continue
             
             # Random explosion with 0.0003% chance per symbol (further reduced for performance)
-            if random.random() < 0.000003:  # 0.0003% chance (reduced from 0.0005% for better performance)
+            if self.rng.random() < 0.000003:  # 0.0003% chance (reduced from 0.0005% for better performance)
                 # Mark this symbol for explosion (will happen in 3 seconds)
                 current_symbol.rigged_to_explode = True
                 current_symbol.explosion_time = current_time + 3.0
@@ -939,11 +944,11 @@ class MatrixWindow(QWidget):
                     # Use cached blood red color for explosion
                     
                     # Randomize explosion size between 0.5 and 2.5 times base size
-                    explosion_size_factor = random.uniform(0.5, 2.5)
+                    explosion_size_factor = self.rng.uniform(0.5, 2.5)
                     
                     # Add code effect with current time as start time
                     self.code_effects.append(
-                        CodeEffect(current_symbol.pos.x(), current_symbol.pos.y(), self._blood_red_cache, current_time, explosion_size_factor)
+                        CodeEffect(current_symbol.pos.x(), current_symbol.pos.y(), self._blood_red_cache, current_time, explosion_size_factor, self.rng)
                     )
                     
                     # Remove symbol after it explodes
