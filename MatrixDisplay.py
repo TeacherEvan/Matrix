@@ -13,6 +13,15 @@ from PyQt6.QtGui import QPainter, QColor, QPen, QScreen, QPainterPath, QBrush, Q
 logger = logging.getLogger(__name__)
 
 
+def _default_rng(rng=None):
+    """Return the injected rng or a fresh un-seeded random.Random instance.
+
+    Centralizes the four duplicate ``self.rng = rng if rng is not None
+    else random.Random()`` sites so the injection default is defined once.
+    """
+    return rng if rng is not None else random.Random()
+
+
 # pywin32 for Windows-specific features
 import win32gui
 import win32con
@@ -135,7 +144,7 @@ class ExplosionParticle:
         self.last_pos = QPointF(x_pos, y_pos)
         self.active = True
         self.hit_force = speed * 0.2  # Force applied to symbols when hit
-        self.rng = rng if rng is not None else random.Random()  # OBJ-004: RNG injection surface
+        self.rng = _default_rng(rng)  # OBJ-004: RNG injection surface
         
     def update(self, elapsed_time):
         """Update position based on direction and speed.
@@ -240,7 +249,7 @@ class CodeEffect:
         self.start_time = start_time
         self.duration = 4.8  # Animation duration in seconds
         self.size_factor = size_factor
-        self.rng = rng if rng is not None else random.Random()  # OBJ-004: RNG injection surface
+        self.rng = _default_rng(rng)  # OBJ-004: RNG injection surface
         
         # Base radius varies from 50 to 150 (randomized for each explosion)
         self.radius = 75 * self.size_factor
@@ -434,7 +443,7 @@ class MatrixSymbol:
         
         self.size = font_size * 1.0  # Original size (changed from 0.8 to 1.0)
         self.is_active = True
-        self.rng = rng if rng is not None else random.Random()  # OBJ-004: RNG injection surface
+        self.rng = _default_rng(rng)  # OBJ-004: RNG injection surface
         self.change_counter = 0  # Counter for changing the symbol character
         self.trail_counter = 0   # Counter to control trail generation frequency
         
@@ -503,7 +512,7 @@ class MatrixWindow(QWidget):
 
         # Optional RNG (OBJ-001 surface; defaults preserve prior behavior
         # because tests pass a seeded instance explicitly).
-        self.rng = rng if rng is not None else random.Random()
+        self.rng = _default_rng(rng)
         
         # --- Performance Optimizations ---
         # Pre-defined symbol pool for better performance
