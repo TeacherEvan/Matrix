@@ -111,8 +111,6 @@ def test_rng_break_it_gate(qapp):
     global instead of the injected rng, then asserts the determinism test
     FAILS. It proves the determinism test is load-bearing.
     """
-    import MatrixDisplay as mod
-
     real_init = MatrixDisplay.MatrixWindow.__init__
 
     def bypassed_init(self, rng=None):

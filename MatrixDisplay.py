@@ -5,9 +5,9 @@ import math
 import logging
 from collections import deque
 # PyQt6 is generally recommended over PySide6 unless specific licensing is a concern
-from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QWidget
 from PyQt6.QtCore import Qt, QTimer, QRect, QPointF
-from PyQt6.QtGui import QPainter, QColor, QPen, QScreen, QPainterPath, QBrush, QLinearGradient, QFont
+from PyQt6.QtGui import QPainter, QColor, QFont
 
 # Module-level logger for diagnostic output (OBJ-011).
 logger = logging.getLogger(__name__)
@@ -23,12 +23,11 @@ def _default_rng(rng=None):
 
 
 # pywin32 for Windows-specific features
-import win32gui
-import win32con
-import win32api
+import win32gui  # noqa: E402
+import win32con  # noqa: E402
 
 # For CPU monitoring
-import psutil
+import psutil  # noqa: E402
 
 class SymbolTrail:
     """Represents a fading trail left behind a falling Matrix symbol.
@@ -869,7 +868,6 @@ class MatrixWindow(QWidget):
                     trail_index += 1
 
         # --- Update Symbol Positions & Check for Random Explosions (optimized) ---
-        symbols_to_remove = []  # Batch removal for better performance
         
         for symbol_index, current_symbol in enumerate(self.symbols):
             if current_symbol is None or not current_symbol.is_active:
@@ -987,8 +985,6 @@ class MatrixWindow(QWidget):
         font = self.matrix_font
         painter.setFont(font)
 
-        display_rect = self.rect()
-        display_height = display_rect.height()
         
         # --- Draw Symbol Trails (draw first so they appear behind symbols) ---
         for trail in self.symbol_trails:
