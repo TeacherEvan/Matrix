@@ -606,7 +606,7 @@ class MatrixWindow(QWidget):
         # --- Positioning and Sizing ---
         primary_screen = QApplication.primaryScreen()
         if not primary_screen:
-            print("Error: Could not get primary screen.")
+            logger.error("Error: Could not get primary screen.")
             sys.exit(1)
             
         screen_geometry = primary_screen.geometry()
@@ -667,7 +667,7 @@ class MatrixWindow(QWidget):
                         if keyword in window_title:
                             return True
         except Exception as detection_error:
-            print(f"Error checking fullscreen apps: {detection_error}")
+            logger.error(f"Error checking fullscreen apps: {detection_error}")
             
         return False
         
@@ -685,10 +685,10 @@ class MatrixWindow(QWidget):
             # Do a quick CPU check more frequently
             cpu_usage_percent = psutil.cpu_percent(interval=None)
             if cpu_usage_percent > 75 and not self.is_suspended:
-                print(f"Suspending Matrix display due to high CPU usage: {cpu_usage_percent}%")
+                logger.warning(f"Suspending Matrix display due to high CPU usage: {cpu_usage_percent}%")
                 self.suspend_matrix()
             elif cpu_usage_percent <= 75 and self.is_suspended and not self.is_fullscreen_app_running():
-                print(f"Resuming Matrix display, CPU usage normal: {cpu_usage_percent}%")
+                logger.info(f"Resuming Matrix display, CPU usage normal: {cpu_usage_percent}%")
                 self.resume_matrix()
             return
             
@@ -696,17 +696,17 @@ class MatrixWindow(QWidget):
         
         # Check CPU usage
         cpu_usage_percent = psutil.cpu_percent(interval=None)
-        print(f"Current CPU usage: {cpu_usage_percent}%")
+        logger.debug(f"Current CPU usage: {cpu_usage_percent}%")
         
         # Check for fullscreen applications
         fullscreen_detected = self.is_fullscreen_app_running()
         
         if (cpu_usage_percent > 75 or fullscreen_detected) and not self.is_suspended:
             suspension_reason = "high CPU usage" if cpu_usage_percent > 75 else "fullscreen application"
-            print(f"Suspending Matrix display due to {suspension_reason}")
+            logger.warning(f"Suspending Matrix display due to {suspension_reason}")
             self.suspend_matrix()
         elif cpu_usage_percent <= 75 and not fullscreen_detected and self.is_suspended:
-            print("Resuming Matrix display, system state normal")
+            logger.info("Resuming Matrix display, system state normal")
             self.resume_matrix()
     
     def suspend_matrix(self):
@@ -827,12 +827,12 @@ class MatrixWindow(QWidget):
         if len(self.frame_times) >= 60:
             average_frame_time = sum(self.frame_times) / len(self.frame_times)
             if average_frame_time > 0.05:  # More than 50ms (less than 20fps)
-                print(f"Performance Warning: Avg frame time {average_frame_time*1000:.1f}ms | "
+                logger.warning(f"Performance Warning: Avg frame_time {average_frame_time*1000:.1f}ms | "
                       f"Symbols: {self.symbol_count}/{self.max_symbols} | "
                       f"Trails: {len(self.symbol_trails)} | "
                       f"Effects: {len(self.code_effects)}")
             elif len(self.frame_times) == 60:  # Log performance stats periodically
-                print(f"Performance: {average_frame_time*1000:.1f}ms avg | "
+                logger.info(f"Performance: {average_frame_time*1000:.1f}ms avg | "
                       f"Symbols: {self.symbol_count} | Trails: {len(self.symbol_trails)}")
         
         display_height = self.overlay_height
@@ -1049,12 +1049,12 @@ class MatrixWindow(QWidget):
         # Make sure HWND is obtained before trying to set layer
         if not self.hwnd:
             self.hwnd = self.winId()
-            print(f"HWND obtained in showEvent: {self.hwnd}")
+            logger.debug(f"HWND obtained in showEvent: {self.hwnd}")
 
         if self.hwnd:
             self.set_window_layer()
         else:
-            print("Error: Could not get HWND in showEvent.")
+            logger.error("Error: Could not get HWND in showEvent.")
 
     def set_window_layer(self):
         """Configure advanced window layering using pywin32.
@@ -1065,7 +1065,7 @@ class MatrixWindow(QWidget):
         - Always on top (HWND_TOPMOST)
         """
         try:
-            print(f"Attempting to set styles for HWND: {self.hwnd}")
+            logger.debug(f"Attempting to set styles for HWND: {self.hwnd}")
             # Get current extended style
             window_style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
             # Add WS_EX_LAYERED for transparency effects
@@ -1079,10 +1079,10 @@ class MatrixWindow(QWidget):
                                   0, 0, 0, 0,
                                   win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE)
 
-            print("Applied WS_EX_LAYERED | WS_EX_TRANSPARENT and set HWND_TOPMOST.")
+            logger.info("Applied WS_EX_LAYERED | WS_EX_TRANSPARENT and set HWND_TOPMOST.")
 
         except Exception as error:
-            print(f"Error applying window styles/position via pywin32: {error}")
+            logger.error(f"Error applying window styles/position via pywin32: {error}")
 
     def closeEvent(self, event):
         """Handle window close event for cleanup.
